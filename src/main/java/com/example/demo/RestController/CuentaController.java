@@ -1,6 +1,7 @@
 package com.example.demo.RestController;
 
 import com.example.demo.DAO.CuentaDAOImplementation;
+import com.example.demo.DAO.MovimientoDAOImplementation;
 import com.example.demo.DTO.CrearCuenta;
 import com.example.demo.DTO.CuentaDTO;
 import com.example.demo.DTO.OperacionDTO;
@@ -8,8 +9,11 @@ import com.example.demo.JPA.Cuenta;
 import com.example.demo.JPA.Movimiento;
 import com.example.demo.JPA.Transaccion;
 import com.example.demo.Service.CuentaService;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -26,10 +30,14 @@ public class CuentaController {
 
     private final CuentaService cuentaService;
     private final CuentaDAOImplementation cuentaDAOImplementation;
+    private final MovimientoDAOImplementation movimientoDAOImplementation;
 
-    public CuentaController(CuentaService cuentaService, CuentaDAOImplementation cuentaDAOImplementation) {
+    public CuentaController(CuentaService cuentaService,
+            CuentaDAOImplementation cuentaDAOImplementation,
+            MovimientoDAOImplementation movimientoDAOImplementation) {
         this.cuentaDAOImplementation = cuentaDAOImplementation;
         this.cuentaService = cuentaService;
+        this.movimientoDAOImplementation = movimientoDAOImplementation;
     }
 
     @GetMapping
@@ -84,5 +92,42 @@ public class CuentaController {
         movimiento.setDescripcion(operacion.getDescripcion());
         movimiento.setTipo("deposito");
         return cuentaService.Deposito(id, movimiento);
+    }
+
+    @GetMapping("/{cuentaId}/movimientos")
+    public ResponseEntity HistorialMovimientos( 
+            @RequestParam(name = "fechaInicio", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate fechaInicio,
+            @RequestParam(name = "fechaFin", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate fechaFin,
+            @PathVariable("cuentaId") int cuentaId) {
+
+        if (fechaInicio != null && fechaFin != null) {
+            if (fechaFin.isBefore(fechaInicio)) {
+                throw new IllegalArgumentException("La fecha fin debe ser igual o posterior a la fecha inicio");
+            }
+        }
+        List<Movimiento> movimientos = movimientoDAOImplementation.GetByCuenta(cuentaId);
+
+        if (fechaInicio == null && fechaFin == null) {
+            return ResponseEntity.ok(movimientos);
+        }
+
+        movimientos = movimientos.stream()
+                .filter(movimiento -> {
+                    LocalDate fechaMovimiento = movimiento.getFecha().toLocalDate();
+                    if (fechaInicio != null && fechaFin != null) {
+                        return !fechaMovimiento.isBefore(fechaInicio)
+                                && !fechaMovimiento.isAfter(fechaFin);
+                    }
+                    if (fechaInicio != null) {
+                        return !fechaMovimiento.isBefore(fechaInicio);
+                    }
+                    if (fechaFin != null) {
+                        return !fechaMovimiento.isAfter(fechaFin);
+                    }
+                    return true;
+                })
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(movimientos);
+
     }
 }

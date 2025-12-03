@@ -48,4 +48,22 @@ public class MovimientoDAOImplementation implements IMovimiento {
 
     }
 
+    @Override
+    public List<Movimiento> GetByCuenta(int idCuenta) {
+        List<Movimiento> movimientos = new ArrayList<>();
+        try {
+            TypedQuery<Movimiento> queryMovimiento = entityManager.createQuery(
+                    "SELECT m FROM Movimiento m "
+                    + "WHERE m.cuenta.id = :idCuenta",
+                    Movimiento.class
+            );
+            queryMovimiento.setParameter("idCuenta", idCuenta);
+
+            movimientos = queryMovimiento.getResultList();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return movimientos;
+    }
+
 }

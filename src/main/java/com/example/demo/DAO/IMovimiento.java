@@ -7,6 +7,8 @@ public interface IMovimiento {
 
     Movimiento Add(Movimiento movimiento);
 
-    List<Movimiento> GetByCliente(int idCliente);   
+    List<Movimiento> GetByCliente(int idCliente);  
+    
+    List<Movimiento> GetByCuenta(int idCuenta);
 
 }
