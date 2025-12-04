@@ -18,6 +18,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -62,7 +64,9 @@ public class CuentaService {
         cuentaDB.setFechaApertura(LocalDate.now());
         cuentaDB.setActiva(true);
         cuentaDB.setCliente(cliente);
-        cuentaDAOImplementation.Add(cuentaDB);
+        if (ValidarCuenta(cuentaDB)) {
+            cuentaDAOImplementation.Add(cuentaDB);
+        }
         Movimiento movimiento = new Movimiento();
         movimiento.setMonto(cuentaDB.getSaldo());
         movimiento.setDescripcion("Deposito inicial");
@@ -101,6 +105,14 @@ public class CuentaService {
         );
     }
 
+    private boolean ValidarCuenta(Cuenta cuenta) {
+        String regex = "[A-Z]{3}[0-9]{8}";
+        Pattern pattern = Pattern.compile(regex);
+        Matcher matcher = pattern.matcher(cuenta.getNumeroCuenta());
+
+        return matcher.matches();
+    }
+
     public List<CuentaDTO> GetAll() {
         List<CuentaDTO> cuentas = new ArrayList<>();
         for (Cuenta cuenta : cuentaDAOImplementation.GetAll()) {
@@ -113,36 +125,42 @@ public class CuentaService {
         try {
             Cuenta cuenta = cuentaDAOImplementation.GetById(idCuenta);
             if (cuenta.isActiva()) {
-                Transaccion transaccion = new Transaccion();
-                transaccion.setSaldoAnterior(cuenta.getSaldo());
+                if (movimiento.getMonto() > 0) {
+                    Transaccion transaccion = new Transaccion();
+                    transaccion.setSaldoAnterior(cuenta.getSaldo());
 
-                if (cuenta.getSaldo() >= movimiento.getMonto()) {
-                    cuenta.setSaldo(cuenta.getSaldo() - movimiento.getMonto());
-                    movimiento.setFecha(LocalDateTime.now());
-                    movimiento.setCuenta(cuenta);
-                    Movimiento movimientoBD = movimientoDAOImplementation.Add(movimiento);
+                    if (cuenta.getSaldo() >= movimiento.getMonto()) {
+                        cuenta.setSaldo(cuenta.getSaldo() - movimiento.getMonto());
+                        movimiento.setFecha(LocalDateTime.now());
+                        movimiento.setCuenta(cuenta);
+                        Movimiento movimientoBD = movimientoDAOImplementation.Add(movimiento);
 
-                    Cuenta nuevoSaldo = cuentaDAOImplementation.GetById(idCuenta);
-                    transaccion.setIdCuenta(cuenta);
-                    transaccion.setMensaje("Retiro realizado con éxito");
-                    transaccion.setOperacion("RETIRO");
-                    transaccion.setSaldoNuevo(nuevoSaldo.getSaldo());
-                    transaccion = transaccionDAOImplentation.Add(transaccion);
+                        Cuenta nuevoSaldo = cuentaDAOImplementation.GetById(idCuenta);
+                        transaccion.setIdCuenta(cuenta);
+                        transaccion.setMensaje("Retiro realizado con éxito");
+                        transaccion.setOperacion("RETIRO");
+                        transaccion.setSaldoNuevo(nuevoSaldo.getSaldo());
+                        transaccion = transaccionDAOImplentation.Add(transaccion);
 
-                    return ResponseEntity.ok(transaccion);
+                        return ResponseEntity.ok(transaccion);
+                    } else {
+                        Response response = new Response();
+                        response.mensaje = "Saldo insuficiente. Intenta retirar: " + movimiento.getMonto()
+                                + ". Saldo disponible: " + cuenta.getSaldo();
+                        response.codigo = 400;
+                        response.fecha = LocalDateTime.now();
+                        response.ruta = "api/cuentas/" + cuenta.getId() + "/retiros";
+                        response.error = "Solicitud incorrecta";
+
+                        return ResponseEntity.status(400).body(response);
+                    }
                 } else {
-                    Response response = new Response();
-                    response.mensaje = "Saldo insuficiente. Intenta retirar: " + movimiento.getMonto()
-                            + ". Saldo disponible: " + cuenta.getSaldo();
-                    response.codigo = 400;
-                    response.fecha = LocalDateTime.now();
-                    response.ruta = "api/cuentas/" + cuenta.getId() + "/retiros";
-                    response.error = "Solicitud incorrecta";
-
-                    return ResponseEntity.status(400).body(response);
+                    Map<String, String> message = Map.of("mensaje", "Monto no válido, debe ser mayor de 0");
+                    return ResponseEntity.status(400).body(message);
                 }
             } else {
-                return ResponseEntity.status(400).body("Cuenta inactiva");
+                Map<String, String> message = Map.of("mensaje", "Cuenta inactiva");
+                return ResponseEntity.status(400).body(message);
             }
 
         } catch (Exception e) {
@@ -153,21 +171,27 @@ public class CuentaService {
     public ResponseEntity<?> Deposito(int idCuenta, Movimiento movimiento) {
         Cuenta cuenta = cuentaDAOImplementation.GetById(idCuenta);
         if (cuenta.isActiva()) {
-            Transaccion transaccion = new Transaccion();
-            transaccion.setSaldoAnterior(cuenta.getSaldo());
-            cuenta.setSaldo(cuenta.getSaldo() + movimiento.getMonto());
-            movimiento.setFecha(LocalDateTime.now());
-            movimiento.setCuenta(cuenta);
-            Movimiento movimientoBD = movimientoDAOImplementation.Add(movimiento);
-            Cuenta nuevoSaldo = cuentaDAOImplementation.GetById(idCuenta);
-            transaccion.setIdCuenta(cuenta);
-            transaccion.setMensaje("Deposito realizado con éxito");
-            transaccion.setOperacion("DEPOSITO");
-            transaccion.setSaldoNuevo(nuevoSaldo.getSaldo());
-            transaccion = transaccionDAOImplentation.Add(transaccion);
-            return ResponseEntity.ok(transaccion);
+            if (movimiento.getMonto() > 0) {
+                Transaccion transaccion = new Transaccion();
+                transaccion.setSaldoAnterior(cuenta.getSaldo());
+                cuenta.setSaldo(cuenta.getSaldo() + movimiento.getMonto());
+                movimiento.setFecha(LocalDateTime.now());
+                movimiento.setCuenta(cuenta);
+                Movimiento movimientoBD = movimientoDAOImplementation.Add(movimiento);
+                Cuenta nuevoSaldo = cuentaDAOImplementation.GetById(idCuenta);
+                transaccion.setIdCuenta(cuenta);
+                transaccion.setMensaje("Deposito realizado con éxito");
+                transaccion.setOperacion("DEPOSITO");
+                transaccion.setSaldoNuevo(nuevoSaldo.getSaldo());
+                transaccion = transaccionDAOImplentation.Add(transaccion);
+                return ResponseEntity.ok(transaccion);
+            } else {
+                Map<String, String> message = Map.of("mensaje", "Monto no válido, debe ser mayor de 0");
+                return ResponseEntity.status(400).body(message);
+            }
         } else {
-            return ResponseEntity.status(400).body("Cuenta inactiva");
+            Map<String, String> message = Map.of("mensaje", "Cuenta inactiva");
+            return ResponseEntity.status(400).body(message);
         }
 
     }

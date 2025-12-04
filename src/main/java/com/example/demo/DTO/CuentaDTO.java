@@ -1,5 +1,6 @@
 package com.example.demo.DTO;
 
+
 public class CuentaDTO {
 
     private int id;

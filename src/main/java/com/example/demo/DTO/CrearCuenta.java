@@ -1,7 +1,10 @@
 package com.example.demo.DTO;
 
+import jakarta.validation.constraints.Pattern;
+
 public class CrearCuenta {
 
+    @Pattern(regexp = "^[A-Z]{3}[0-9]{8}$", message = "El número de cuenta debe tener 3 letras mayúsculas seguidas de 8 dígitos")
     private String numeroCuenta;
     private String tipoCuenta;
     private Double saldoInicial;

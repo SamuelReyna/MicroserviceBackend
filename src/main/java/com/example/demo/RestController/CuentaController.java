@@ -7,7 +7,6 @@ import com.example.demo.DTO.CuentaDTO;
 import com.example.demo.DTO.OperacionDTO;
 import com.example.demo.JPA.Cuenta;
 import com.example.demo.JPA.Movimiento;
-import com.example.demo.JPA.Transaccion;
 import com.example.demo.Service.CuentaService;
 import java.time.LocalDate;
 import java.util.HashMap;
@@ -61,6 +60,7 @@ public class CuentaController {
         CuentaDTO newCuenta = cuentaService.Add(cuenta);
         return ResponseEntity.ok(newCuenta);
     }
+    
 
     @GetMapping("/{id}")
     public ResponseEntity<CuentaDTO> GetById(@PathVariable("id") int id) {
@@ -137,6 +137,5 @@ public class CuentaController {
                 })
                 .collect(Collectors.toList());
         return ResponseEntity.ok(movimientos);
-
     }
 }
