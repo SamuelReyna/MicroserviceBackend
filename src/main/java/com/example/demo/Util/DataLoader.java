@@ -41,12 +41,11 @@ public class DataLoader implements CommandLineRunner {
                 iCuentaRepository.save(new Cuenta(
                         "BAN" + numeroAleatorio,
                         "AHORROS",
-                        1000.50,
+                        1000.000,
                         LocalDate.now(),
                         true,
                         clienteRef));
             }
-
         }
     }
 

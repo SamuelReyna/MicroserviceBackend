@@ -10,6 +10,7 @@ import com.example.demo.JPA.Movimiento;
 import com.example.demo.JPA.Transaccion;
 import com.example.demo.Service.CuentaService;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -67,12 +68,20 @@ public class CuentaController {
         return ResponseEntity.ok(cuenta);
     }
 
-    @PatchMapping("/{id}")
+    @PatchMapping("/{id}/desactivar")
     public ResponseEntity LogicalDelete(@PathVariable("id") int id) {
         Cuenta cuenta = cuentaDAOImplementation.BajaLogica(id);
-        Map<String, String> message = Map.of(
-                "message", "Cuenta " + cuenta.getNumeroCuenta() + " desactivada exitosamente"
-        );
+        Map<String, String> message = new HashMap<>();
+        if (!cuenta.isActiva()) {
+            message.put(
+                    "message", "Cuenta " + cuenta.getNumeroCuenta() + " Desactivada exitosamente"
+            );
+        } else {
+            message.put(
+                    "message", "Cuenta " + cuenta.getNumeroCuenta() + " Activada exitosamente"
+            );
+        }
+
         return ResponseEntity.ok(message);
     }
 
@@ -95,7 +104,7 @@ public class CuentaController {
     }
 
     @GetMapping("/{cuentaId}/movimientos")
-    public ResponseEntity HistorialMovimientos( 
+    public ResponseEntity HistorialMovimientos(
             @RequestParam(name = "fechaInicio", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate fechaInicio,
             @RequestParam(name = "fechaFin", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate fechaFin,
             @PathVariable("cuentaId") int cuentaId) {
